@@ -25,12 +25,12 @@ T - number of images in the time series
 
 
 # Instructions to run Cap_Stall GUI:
-Select Load data in menu tool (Menu > Load Data)
-A window prompt opens. Select the folder which has the MIP time series data
-If needed, load previous results (Menu > Load results) or else go to next step 
-Select stalling capillary segments on the MIP time series data (left axis) and average volume (right axis). It is advised to select a point near the center of the capillary segment. Don’t worry about selecting all stalling time points for each capillary at this moment. Only make sure to select all capillaries that exhibit a stalling event.
-After selecting all of the stalling capillaries, save the results (Menu > Save results). Note that you are advised to regularly save your work as you progress. You don’t need to wait until everything is selected before saving.
-Click the “segment analysis” button. This will start a process that automatically tracks each identified capillary segment a short distance in each direction from your selected “center” point. This will facilitate the subsequent time series analysis.
-After some processing a matlab figure pops up with the tracked segments identified. Make sure to save this image for future reference. This is a matlab figure and so you use the standard matlab menu items to save the fig-file and/or export it to some other format.
-For each stalling capillary, go through the time series MIP data and select the time points for when a stall occurs. Use the MIP images and the corresponding segment time series intensity plot to help you make these decisions. The mouse wheel helps you scroll through the time series MIP data and the spacebar helps you select/deselect a stall event. In general, if there is a stalling event, then the intensity should go down on the intensity plot. However, due to noise and motion artifacts, you may not always see the intensity going down even if you observe on the MIP images that a stalling event occurred.
-Save results as OutputFileName.mat (Menu > Save results)
+1. Select Load data in menu tool (Menu > Load Data)
+1. A window prompt opens. Select the folder which has the MIP time series data
+1. If needed, load previous results (Menu > Load results) or else go to next step 
+1. Select stalling capillary segments on the MIP time series data (left axis) and average volume (right axis). It is advised to select a point near the center of the capillary segment. Don’t worry about selecting all stalling time points for each capillary at this moment. Only make sure to select all capillaries that exhibit a stalling event.
+1. After selecting all of the stalling capillaries, save the results (Menu > Save results). Note that you are advised to regularly save your work as you progress. You don’t need to wait until everything is selected before saving.
+1. Click the “segment analysis” button. This will start a process that automatically tracks each identified capillary segment a short distance in each direction from your selected “center” point. This will facilitate the subsequent time series analysis.
+1. After some processing a matlab figure pops up with the tracked segments identified. Make sure to save this image for future reference. This is a matlab figure and so you use the standard matlab menu items to save the fig-file and/or export it to some other format.
+1. For each stalling capillary, go through the time series MIP data and select the time points for when a stall occurs. Use the MIP images and the corresponding segment time series intensity plot to help you make these decisions. The mouse wheel helps you scroll through the time series MIP data and the spacebar helps you select/deselect a stall event. In general, if there is a stalling event, then the intensity should go down on the intensity plot. However, due to noise and motion artifacts, you may not always see the intensity going down even if you observe on the MIP images that a stalling event occurred.
+1. Save results as OutputFileName.mat (Menu > Save results)
