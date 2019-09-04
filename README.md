@@ -24,7 +24,7 @@ N - number of stalling capillary segments
 T - number of images in the time series 
 
 
-# Instructions to run Cap_Stall GUI:
+# Instructions to run CapStall GUI:
 1. Select Load data in menu tool (Menu > Load Data)
 1. A window prompt opens. Select the folder which has the MIP time series data
 1. If needed, load previous results (Menu > Load results) or else go to next step 
