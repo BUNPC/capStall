@@ -21,6 +21,7 @@ Seg [Nx1]- is a structure data type.
 *StallingMatrix* [N*T] - is binary matrix with stalls indicated as 1 and non-stalls as 0. This is the famous stall-o-gram.
 
 N - number of stalling capillary segments
+
 T - number of images in the time series 
 
 
