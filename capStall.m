@@ -22,7 +22,7 @@ function varargout = capStall(varargin)
 
 % Edit the above text to modify the response to help capStall
 
-% Last Modified by GUIDE v2.5 04-Sep-2019 10:23:44
+% Last Modified by GUIDE v2.5 20-Nov-2022 13:44:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -142,6 +142,24 @@ z = size(Data.I,3);
 % Data.Volume = angio;
 % Vz = size(Data.Volume,1);
 
+pathname_enh = [Data.pathname '_enh'] ;
+if exist(pathname_enh, 'dir')
+    files = dir([pathname_enh  '/*_angio.mat']);
+    load([pathname '/' files(1).name]);
+    [x,y] = size(angio);
+    z = length(files);
+    I = zeros([x y z]);
+    for  u = 1:z
+        load([pathname '/' files(u).name]);
+        I(:,:,u) = angio;
+    end
+    Data.I_enh = I;
+    files = dir([pathname_enh  '/*_angioVolume.mat']);
+    load([pathname '/' files(1).name]);
+    Data.Volume_enh = angio;
+    set(handles.checkbox_displayEnh,'Enable','On');
+end
+
 set(handles.slider_movedata,'max',z);
 set(handles.slider_movedata,'min',1);
 set(handles.slider_movedata,'Value',1);
@@ -164,7 +182,11 @@ draw(hObject, eventdata, handles);
 function draw(hObject, eventdata, handles)
 
 global Data
-I = Data.I;
+if get(handles.checkbox_displayEnh,'Value')
+    I = Data.I_enh;
+else
+    I = Data.I;
+end
 ii = str2double(get(handles.edit_volnumber,'string'));
 MinI = str2double(get(handles.edit_MinI,'String'));
 MaxI = str2double(get(handles.edit_MaxI,'String'));
@@ -198,7 +220,11 @@ set(gcf, 'WindowKeyPressFcn', {@figure_WindowKeyPressFcn, handles},'Interruptibl
 
 axes(handles.axes2)
 colormap('gray');
-h2 = imagesc(squeeze(max(Data.Volume(startidx:startidx+endidx-1,:,:),[],1)),[MinI MaxI]);
+if get(handles.checkbox_displayEnh,'Value')
+    h2 = imagesc(log(squeeze(max(Data.Volume_enh(startidx:startidx+endidx-1,:,:),[],1))));
+else
+    h2 = imagesc(log(squeeze(max(Data.Volume(startidx:startidx+endidx-1,:,:),[],1))));
+end
 hold on
 if (get(handles.radiobutton_showseg,'Value') == 1)
     if isfield(Data,'seg')
@@ -349,9 +375,13 @@ end
 function axes_WindowScrollWheelFcn(hObject, eventdata, handles)
 
 global Data
-
-[I_x,I_y,~] = size(Data.I);
-[~,V_x,V_y] = size(Data.Volume);
+if get(handles.checkbox_displayEnh,'Value')
+    [I_x,I_y,~] = size(Data.I_enh);
+    [~,V_x,V_y] = size(Data.Volume_enh);
+else
+    [I_x,I_y,~] = size(Data.I);
+    [~,V_x,V_y] = size(Data.Volume);
+end
 axis1pos = get(handles.axes1, 'CurrentPoint');
 axis1pos = axis1pos(1,1:2);
 axis2pos = get(handles.axes2,'CurrentPoint');
@@ -958,72 +988,100 @@ for vv = 1:size(Data.Cap,1)
     seg(vv).pos = Data.Graph.nodes(seg_nodes,:);
     seg(vv).mask = Data.Graph.nodes(seg_nodes,:);
     
-    min_seg_x = min(seg(vv).pos(:,2));
-    max_seg_x = max(seg(vv).pos(:,2));
-    min_seg_y = min(seg(vv).pos(:,1));
-    max_seg_y = max(seg(vv).pos(:,1));
-    min_x = min(max(min_seg_x-7,1),bY);
-    max_x = min(max(max_seg_x+7,1),bY);
-    min_y = min(max(min_seg_y-7,1),bX);
-    max_y = min(max(max_seg_y+7,1),bX);
-    mean_cropped_image = squeeze(Data.Volume(1,min_x:max_x,min_y:max_y));
-    [optimizer, metric] = imregconfig('monomodal');
-    LRimage = zeros(size(seg(vv).pos,1),n_frames);
-    for ww =1:n_frames
-%         ww
-        frame_cropped_image = Data.I(min_x:max_x,min_y:max_y,ww);
-        current_frame = squeeze(Data.I(:,:,ww));
-        tform = imregtform(mean_cropped_image', frame_cropped_image', 'rigid', optimizer, metric);
-        mean_seg_pos = [seg(vv).pos(:,2)-min_x seg(vv).pos(:,1)-min_y seg(vv).pos(:,3)];
-        [points_x, points_y] = transformPointsForward(tform,mean_seg_pos(:,1),mean_seg_pos(:,2));
-        frame_seg_pos_x =points_x+min_x ;
-        frame_seg_pos_y = points_y+min_y;
-        frame_seg_pos_x(frame_seg_pos_x<1) = 1;
-        frame_seg_pos_x(frame_seg_pos_x>bY) = bY;
-        frame_seg_pos_y(frame_seg_pos_y<1) = 1;
-        frame_seg_pos_y(frame_seg_pos_y>bX) = bX;
-%         ind = round(sub2ind(size(current_frame),frame_seg_pos_x',frame_seg_pos_y'));
-%         LRimage(:,ww) = current_frame(ind);
-        for ll = 1:size(seg(vv).pos,1)
-            LRimage(ll,ww) = current_frame(round(frame_seg_pos_x(ll)),round(frame_seg_pos_y(ll)));
-        end
-%         moving_reg = imwarp(mean_cropped_image, tform, 'OutputView',imref2d(size(cropped_image)));
-    end
-    seg(vv).LRimage = LRimage;
-end
-Data.seg = seg;
-Int_ts = zeros(length(seg),n_frames);
-for kk = 1:length(seg)
-    Int_ts(kk,:) = mean(seg(kk).LRimage,1);
-end
-% Z = size(Data.I,3);
-% Int_ts = zeros(length(seg),Z);
-% for kk = 1:length(seg)
-%     temp_ts = zeros(size(seg(kk).pos,1),Z);
-%     for ll = 1:size(seg(kk).pos,1)
-%         temp_ts(ll,:) = squeeze(Data.I(seg(kk).pos(ll,2),seg(kk).pos(ll,1),:));
+% <<<<<<< HEAD
+   Int_ts = zeros(length(seg),Z);
+   slashpos = max(strfind(Data.pathname,filesep));
+   datapath = Data.pathname(1:slashpos-1);
+   files = dir([datapath '/*_angio.mat']);
+   underscorepos = strfind(Data.pathname,'_');
+   underscorepos = underscorepos(end-1:end);
+   startidx = str2num(Data.pathname(underscorepos(1)+1:underscorepos(2)-1));
+   endidx = str2num(Data.pathname(underscorepos(2)+1:end));
+       for kk = 1:length(files)
+           kk
+           load([datapath '/' files(kk).name]);
+           angio = AG(startidx:endidx,:,:);
+           for ll = 1:length(seg)
+               Int_ts(ll,kk) = mean(angio(seg(ll).mask));
+           end
+       end
+   
+   Data.Int_ts = Int_ts;
+   if isfield(Data,'StallingMatrix')
+       Int_rows = size(Data.Int_ts,1);
+       Stall_rows = size(Data.StallingMatrix,1);
+       stall_cols = size(Data.StallingMatrix,2);
+       if Int_rows > Stall_rows
+           Data.StallingMatrix = [Data.StallingMatrix; zeros([Int_rows-Stall_rows stall_cols])];
+       end
+% =======
+%     min_seg_x = min(seg(vv).pos(:,2));
+%     max_seg_x = max(seg(vv).pos(:,2));
+%     min_seg_y = min(seg(vv).pos(:,1));
+%     max_seg_y = max(seg(vv).pos(:,1));
+%     min_x = min(max(min_seg_x-7,1),bY);
+%     max_x = min(max(max_seg_x+7,1),bY);
+%     min_y = min(max(min_seg_y-7,1),bX);
+%     max_y = min(max(max_seg_y+7,1),bX);
+%     mean_cropped_image = squeeze(Data.Volume(1,min_x:max_x,min_y:max_y));
+%     [optimizer, metric] = imregconfig('monomodal');
+%     LRimage = zeros(size(seg(vv).pos,1),n_frames);
+%     for ww =1:n_frames
+% %         ww
+%         frame_cropped_image = Data.I(min_x:max_x,min_y:max_y,ww);
+%         current_frame = squeeze(Data.I(:,:,ww));
+%         tform = imregtform(mean_cropped_image', frame_cropped_image', 'rigid', optimizer, metric);
+%         mean_seg_pos = [seg(vv).pos(:,2)-min_x seg(vv).pos(:,1)-min_y seg(vv).pos(:,3)];
+%         [points_x, points_y] = transformPointsForward(tform,mean_seg_pos(:,1),mean_seg_pos(:,2));
+%         frame_seg_pos_x =points_x+min_x ;
+%         frame_seg_pos_y = points_y+min_y;
+%         frame_seg_pos_x(frame_seg_pos_x<1) = 1;
+%         frame_seg_pos_x(frame_seg_pos_x>bY) = bY;
+%         frame_seg_pos_y(frame_seg_pos_y<1) = 1;
+%         frame_seg_pos_y(frame_seg_pos_y>bX) = bX;
+% %         ind = round(sub2ind(size(current_frame),frame_seg_pos_x',frame_seg_pos_y'));
+% %         LRimage(:,ww) = current_frame(ind);
+%         for ll = 1:size(seg(vv).pos,1)
+%             LRimage(ll,ww) = current_frame(round(frame_seg_pos_x(ll)),round(frame_seg_pos_y(ll)));
+%         end
+% %         moving_reg = imwarp(mean_cropped_image, tform, 'OutputView',imref2d(size(cropped_image)));
 %     end
-%     Int_ts(kk,:) = mean(temp_ts,1);
+%     seg(vv).LRimage = LRimage;
 % end
-Data.Int_ts = Int_ts;
-
-MinI = str2double(get(handles.edit_MinI,'String'));
-MaxI = str2double(get(handles.edit_MaxI,'String'));
-figure; colormap('gray');
-imagesc(squeeze(max(Data.Volume,[],1)),[MinI MaxI]); 
-hold on
-for uu = 1:length(seg)
-    plot(seg(uu).pos(:,1),seg(uu).pos(:,2),'r.','markersize',12);
-end
-hold off
-axis image
-
-if isfield(Data,'StallingMatrix')
-   Int_rows = size(Data.Int_ts,1);
-   Stall_rows = size(Data.StallingMatrix,1);
-   stall_cols = size(Data.StallingMatrix,2);
-   if Int_rows > Stall_rows
-       Data.StallingMatrix = [Data.StallingMatrix; zeros([Int_rows-Stall_rows stall_cols])];
+% Data.seg = seg;
+% Int_ts = zeros(length(seg),n_frames);
+% for kk = 1:length(seg)
+%     Int_ts(kk,:) = mean(seg(kk).LRimage,1);
+% end
+% % Z = size(Data.I,3);
+% % Int_ts = zeros(length(seg),Z);
+% % for kk = 1:length(seg)
+% %     temp_ts = zeros(size(seg(kk).pos,1),Z);
+% %     for ll = 1:size(seg(kk).pos,1)
+% %         temp_ts(ll,:) = squeeze(Data.I(seg(kk).pos(ll,2),seg(kk).pos(ll,1),:));
+% %     end
+% %     Int_ts(kk,:) = mean(temp_ts,1);
+% % end
+% Data.Int_ts = Int_ts;
+% 
+% MinI = str2double(get(handles.edit_MinI,'String'));
+% MaxI = str2double(get(handles.edit_MaxI,'String'));
+% figure; colormap('gray');
+% imagesc(squeeze(max(Data.Volume,[],1)),[MinI MaxI]); 
+% hold on
+% for uu = 1:length(seg)
+%     plot(seg(uu).pos(:,1),seg(uu).pos(:,2),'r.','markersize',12);
+% end
+% hold off
+% axis image
+% 
+% if isfield(Data,'StallingMatrix')
+%    Int_rows = size(Data.Int_ts,1);
+%    Stall_rows = size(Data.StallingMatrix,1);
+%    stall_cols = size(Data.StallingMatrix,2);
+%    if Int_rows > Stall_rows
+%        Data.StallingMatrix = [Data.StallingMatrix; zeros([Int_rows-Stall_rows stall_cols])];
+% >>>>>>> master
    end
 end
 draw(hObject, eventdata, handles);
@@ -1567,3 +1625,14 @@ if isfield(Data,'StallingMatrix')
     StallingMatrix = Data.StallingMatrix;
     save([pathname filename],'StallingMatrix','-append');
 end
+
+
+% --- Executes on button press in checkbox_displayEnh.
+function checkbox_displayEnh_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_displayEnh (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox_displayEnh
+
+draw(hObject, eventdata, handles)
