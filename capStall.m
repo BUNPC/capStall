@@ -22,7 +22,7 @@ function varargout = capStall(varargin)
 
 % Edit the above text to modify the response to help capStall
 
-% Last Modified by GUIDE v2.5 04-Sep-2019 10:23:44
+% Last Modified by GUIDE v2.5 20-Nov-2022 13:44:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -113,6 +113,24 @@ load([pathname '/' files(1).name]);
 Data.Volume = angio;
 Vz = size(Data.Volume,1);
 
+pathname_enh = [Data.pathname '_enh'] ;
+if exist(pathname_enh, 'dir')
+    files = dir([pathname_enh  '/*_angio.mat']);
+    load([pathname '/' files(1).name]);
+    [x,y] = size(angio);
+    z = length(files);
+    I = zeros([x y z]);
+    for  u = 1:z
+        load([pathname '/' files(u).name]);
+        I(:,:,u) = angio;
+    end
+    Data.I_enh = I;
+    files = dir([pathname_enh  '/*_angioVolume.mat']);
+    load([pathname '/' files(1).name]);
+    Data.Volume_enh = angio;
+    set(handles.checkbox_displayEnh,'Enable','On');
+end
+
 set(handles.slider_movedata,'max',z);
 set(handles.slider_movedata,'min',1);
 set(handles.slider_movedata,'Value',1);
@@ -135,7 +153,11 @@ draw(hObject, eventdata, handles);
 function draw(hObject, eventdata, handles)
 
 global Data
-I = Data.I;
+if get(handles.checkbox_displayEnh,'Value')
+    I = Data.I_enh;
+else
+    I = Data.I;
+end
 ii = str2double(get(handles.edit_volnumber,'string'));
 MinI = str2double(get(handles.edit_MinI,'String'));
 MaxI = str2double(get(handles.edit_MaxI,'String'));
@@ -169,7 +191,11 @@ set(gcf, 'WindowKeyPressFcn', {@figure_WindowKeyPressFcn, handles},'Interruptibl
 
 axes(handles.axes2)
 colormap('gray');
-h2 = imagesc(log(squeeze(max(Data.Volume(startidx:startidx+endidx-1,:,:),[],1))));
+if get(handles.checkbox_displayEnh,'Value')
+    h2 = imagesc(log(squeeze(max(Data.Volume_enh(startidx:startidx+endidx-1,:,:),[],1))));
+else
+    h2 = imagesc(log(squeeze(max(Data.Volume(startidx:startidx+endidx-1,:,:),[],1))));
+end
 hold on
 if (get(handles.radiobutton_showseg,'Value') == 1)
     if isfield(Data,'seg')
@@ -320,9 +346,13 @@ end
 function axes_WindowScrollWheelFcn(hObject, eventdata, handles)
 
 global Data
-
-[I_x,I_y,~] = size(Data.I);
-[~,V_x,V_y] = size(Data.Volume);
+if get(handles.checkbox_displayEnh,'Value')
+    [I_x,I_y,~] = size(Data.I_enh);
+    [~,V_x,V_y] = size(Data.Volume_enh);
+else
+    [I_x,I_y,~] = size(Data.I);
+    [~,V_x,V_y] = size(Data.Volume);
+end
 axis1pos = get(handles.axes1, 'CurrentPoint');
 axis1pos = axis1pos(1,1:2);
 axis2pos = get(handles.axes2,'CurrentPoint');
@@ -1131,7 +1161,7 @@ segm = zeros(size(I));
        for kk = 1:length(files)
            kk
            load([datapath '/' files(kk).name]);
-           angio = angio(startidx:endidx,:,:);
+           angio = AG(startidx:endidx,:,:);
            for ll = 1:length(seg)
                Int_ts(ll,kk) = mean(angio(seg(ll).mask));
            end
@@ -1336,3 +1366,14 @@ if isfield(Data,'StallingMatrix')
     StallingMatrix = Data.StallingMatrix;
     save([pathname filename],'StallingMatrix','-append');
 end
+
+
+% --- Executes on button press in checkbox_displayEnh.
+function checkbox_displayEnh_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_displayEnh (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox_displayEnh
+
+draw(hObject, eventdata, handles)
